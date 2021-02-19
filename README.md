@@ -17,7 +17,7 @@ Add the secret keys found in <code>wp-config.php</code>
 </pre>
 
 
-#### DATA BASE
+#### DATABASE
 Configure the database, this can be found in <code>wp-config.php</code>
 
 <pre>
