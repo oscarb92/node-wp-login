@@ -27,6 +27,13 @@ const NONCE_KEY = 'w j{K+t0D;hx6qbSpePE7j: g5lzc6*%1.c90;hZ9EItaa>FD5>RWG,#8$eS{
 const LOGGED_IN_SALT = 'm8G: j6OTS;Sdi4r^w?_kOCZqC8MwjI]K#TxUSy>X:Xe|?r%x-D&0j&1e{jjA|!m';
 const NONCE_SALT = 'eyZ}eZ`1yEh].(B*q+8[K6@3T9D>x(-QBL%S,]}iQt&xXl?K[mo}6Q[EC|M%jLb#';
 
+const connection = mysql.createConnection({
+  host     : 'localhost',
+  user     : 'root',
+  password : '',
+  database : 'node_test',
+});
+
 const SALT_KEY = LOGGED_IN_KEY + LOGGED_IN_SALT;
 const SECURE_AUTH = AUTH_KEY + SECURE_AUTH_KEY;
 
@@ -41,13 +48,6 @@ const table_prefix = 'wp_';
 
 var IS_SSL = false;
 var secure_logged_in_cookie = false;
-
-const connection = mysql.createConnection({
-  host     : 'localhost',
-  user     : 'root',
-  password : '',
-  database : 'node_test',
-});
 
 
 function wp_hash_log(string){
