@@ -5,7 +5,22 @@ Authentication is only done on the WP frontend, therefore the user will not have
 
 ### CONFIG
 
-The application must run on the same domain as Wordpress
+The application must run on the same domain as Wordpress.
+
+#### PATH
+
+Replace with the path where the app is running, if you are running it in the root, do not modify it.
+
+
+Example 1: <code>http://localhost:8000/</code> or <code>http://localhost/</code>
+<pre>
+	const PATH_APP = '/';
+</pre>
+
+Example 2: <code>http://localhost/login:8000</code> or <code>http://localhost/login</code>
+<pre>
+	const PATH_APP = '/login/';
+</pre>
 
 #### SECRET KEYS
 Add the secret keys found in <code>wp-config.php</code>
