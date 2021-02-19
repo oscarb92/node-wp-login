@@ -1,3 +1,8 @@
+### IMPORTANT: 
+
+Authentication is only done on the WP frontend, therefore the user will not have access to /wp-admin and any attempt to enter that directory will destroy the cookie and log off. 
+<br>This is because WordPress creates a dynamic SALT for /wp-admin, it is not defined in wp-config.php and therefore the cookie from /wp-admin cannot be authenticated.
+
 ### CONFIG
 
 The application must run on the same domain as Wordpress
