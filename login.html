@@ -33,6 +33,15 @@
 			font-weight: bold;
 			color: #ffffff;
 		}
+		.error_form {
+		    margin-top: 30px;
+		    padding: 10px 15px;
+		    border: 1px solid red;
+		    background: #ffdbdb;
+		    color: #864d00;
+		    font-size: .9em;
+		    border-radius: 4px;
+		}
 		</style>
 	</head>
 	<body>
@@ -43,6 +52,37 @@
 				<input type="password" name="password" placeholder="Password" required>
 				<input type="submit" value="Log in">
 			</form>
+
+			<div class="error_form" style="display: none;"></div>
 		</div>
 	</body>
 </html>
+<script src= "https://ajax.googleapis.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+<script type="text/javascript">
+
+	var getUrlParameter = function getUrlParameter(sParam) {
+	    var sPageURL = window.location.search.substring(1),
+	        sURLVariables = sPageURL.split('&'),
+	        sParameterName,
+	        i;
+
+	    for (i = 0; i < sURLVariables.length; i++) {
+	        sParameterName = sURLVariables[i].split('=');
+
+	        if (sParameterName[0] === sParam) {
+	            return typeof sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+	        }
+	    }
+	    return false;
+	};
+
+	var error = getUrlParameter('fail');
+	if (error==1) {
+		$('.error_form').html('Please verify your username or password.');
+		$('.error_form').show();
+	}else if(error>1){
+		$('.error_form').html('The credentials are not valid.');
+		$('.error_form').show();
+	}
+
+</script>

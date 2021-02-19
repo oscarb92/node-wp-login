@@ -16,7 +16,7 @@ let hasher = require('wordpress-hash-node');
 phpjs = require('./serialize');
 
 
-
+const PATH_APP = '/';
 //DEFINE SALT WP
 const AUTH_KEY = 'B>ma.i_YYY<A&e;WaJ0AIw$esaoNrvdy~Y[n{giHT9gB6rTI4hUC{CN3A4cH*&:u';
 const SECURE_AUTH_KEY = 'G:Ax@s7Gtf~D6;QDH6<e7JM`hZ|y-G.c2r&s.B5-?%YxH4Z<R,7/L./^.[DxRdj&';
@@ -241,7 +241,7 @@ app.post('/auth', function(req, res) {
                 auth_cookie_name = 'wordpress_sec_'+COOKIEHASH;
                 scheme           = 'secure_auth';
               } else {
-                $auth_cookie_name = 'wordpress_'+COOKIEHASH;
+                auth_cookie_name = 'wordpress_'+COOKIEHASH;
                 scheme           = 'auth';
             }
 
@@ -275,18 +275,21 @@ app.post('/auth', function(req, res) {
             res.redirect(home);
 
         }else{
-          res.send('Incorrect Credentials!');
+          //res.send('Incorrect Credentials!');
+          res.redirect(PATH_APP+'?fail=1');
         }
       } else {
-        res.send('Incorrect Username and/or Password! '+password);
+        res.redirect(PATH_APP+'?fail=2');
       }     
       res.end();
     });
   } else {
-    res.send('Please enter Username and Password!');
-
-    res.end();
+    // res.send('Please enter Username and Password!');
+    // res.end();
+    res.redirect(PATH_APP+'?fail=2');
   }
+
+
 });
 
 
