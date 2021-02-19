@@ -189,10 +189,7 @@ app.post('/auth', function(req, res) {
           var key_auth = wp_hash_auth( userLogin + '|' + pass_frag + '|' + expiration + '|' +  token);
           var hash_auth = hash_hmac( userLogin + '|' + expiration + '|' + token, key_auth );
           var cookie_auth = userLogin + '|' + expiration + '|' + token + '|' + hash_auth;
-
-          // req.session.loggedin = true;
-          // req.session.username = username;
-          //res.redirect('/home');
+    
           
           const UA = req.get('User-Agent');
           const ip = req.header('x-forwarded-for') || req.connection.remoteAddress;
@@ -274,7 +271,8 @@ app.post('/auth', function(req, res) {
             // console.log('cookie: '+cookie);
             
             //console.log(serializeSesionToken);
-            res.send('Login true!: '+userID);
+            //res.send('Login true!: '+userID);
+            res.redirect(home);
 
         }else{
           res.send('Incorrect Credentials!');
