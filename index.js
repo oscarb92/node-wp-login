@@ -35,7 +35,7 @@ const connection = mysql.createConnection({
 });
 
 const SALT_KEY = LOGGED_IN_KEY + LOGGED_IN_SALT;
-const SECURE_AUTH = AUTH_KEY + SECURE_AUTH_KEY;
+const ADMIN_SALT_KEY = AUTH_KEY + AUTH_SALT;
 
 var LOGGED_IN_COOKIE = '';
 var PLUGINS_COOKIE_PATH = '';
@@ -57,7 +57,7 @@ function wp_hash_log(string){
 };
 
 function wp_hash_auth(string){
-    var hmac = crypto.createHmac('md5', SECURE_AUTH);
+    var hmac = crypto.createHmac('md5', ADMIN_SALT_KEY);
     hmac.update(string); 
     return hmac.digest('hex'); 
 };
