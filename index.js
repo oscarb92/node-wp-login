@@ -34,8 +34,10 @@ const connection = mysql.createConnection({
   database : 'node_test',
 });
 
+
 const SALT_KEY = LOGGED_IN_KEY + LOGGED_IN_SALT;
 const ADMIN_SALT_KEY = AUTH_KEY + AUTH_SALT;
+const ADMIN_SEC_KEY = SECURE_AUTH_KEY + SECURE_AUTH_SALT;
 
 var LOGGED_IN_COOKIE = '';
 var PLUGINS_COOKIE_PATH = '';
@@ -56,8 +58,8 @@ function wp_hash_log(string){
     return hmac.digest('hex'); 
 };
 
-function wp_hash_auth(string){
-    var hmac = crypto.createHmac('md5', ADMIN_SALT_KEY);
+function wp_hash_sec(string, secret){
+    var hmac = crypto.createHmac('md5', secret);
     hmac.update(string); 
     return hmac.digest('hex'); 
 };
@@ -177,6 +179,19 @@ app.post('/auth', function(req, res) {
           var pass_frag = pass_estored.substr( 8, 4 );
           var expiration = start+(12 * 3600);
 
+          var auth_cookie_name = 'wordpress_'+COOKIEHASH;
+            var scheme;
+            var secret_aut = ADMIN_SALT_KEY;
+            if ( IS_SSL ) {
+                auth_cookie_name = 'wordpress_sec_'+COOKIEHASH;
+                scheme           = 'secure_auth';
+                secret_aut = ADMIN_SEC_KEY;
+              } else {
+                auth_cookie_name = 'wordpress_'+COOKIEHASH;
+                scheme           = 'auth';
+                secret_aut = ADMIN_SALT_KEY;
+            }
+
           var token = get_token(43);
 
           var hash_token = crypto.createHash('sha256').update(token).digest('hex');
@@ -186,7 +201,7 @@ app.post('/auth', function(req, res) {
           var hash = hash_hmac( userLogin + '|' + expiration + '|' + token, key );
           var cookie = userLogin + '|' + expiration + '|' + token + '|' + hash;
 
-          var key_auth = wp_hash_auth( userLogin + '|' + pass_frag + '|' + expiration + '|' +  token);
+          var key_auth = wp_hash_sec( userLogin + '|' + pass_frag + '|' + expiration + '|' +  token, secret_aut);
           var hash_auth = hash_hmac( userLogin + '|' + expiration + '|' + token, key_auth );
           var cookie_auth = userLogin + '|' + expiration + '|' + token + '|' + hash_auth;
     
@@ -232,18 +247,6 @@ app.post('/auth', function(req, res) {
               }
           });
 
-
-          
-
-            var auth_cookie_name = 'wordpress_'+COOKIEHASH;
-            var scheme;
-            if ( IS_SSL ) {
-                auth_cookie_name = 'wordpress_sec_'+COOKIEHASH;
-                scheme           = 'secure_auth';
-              } else {
-                auth_cookie_name = 'wordpress_'+COOKIEHASH;
-                scheme           = 'auth';
-            }
 
             //cookie = 'admin' + '|' + 1613861286 + '|' + '3zxSwjwgaprVlhTvF61fQQ9dad9Lic8Bmi56Av7ui2T' + '|' + 'b3d9279994d15e0bcf76add709fe5a948f388cb6c96661e61586800c4781c718';
             res.cookie(LOGGED_IN_COOKIE, cookie, { expire: expiration, path: COOKIEPATH });
