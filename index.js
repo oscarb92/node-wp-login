@@ -11,6 +11,8 @@ let crypto = require('crypto');
 // HASH
 let hasher = require('wordpress-hash-node');
 //------//
+// Limiter login
+const {RateLimiterMySQL} = require('rate-limiter-flexible');
 
 //Serialize
 phpjs = require('./serialize');
@@ -34,6 +36,26 @@ const connection = mysql.createConnection({
   database : 'node_test',
 });
 
+const maxConsecutiveFailsByUsername = 5; //Limit login fails
+
+const opts = {
+  storeClient: connection,
+  dbName: 'node_test',
+  tableName: 'node_app_limiter_login', // all limiters store data in one table
+  points: maxConsecutiveFailsByUsername, // Number of points
+  duration: 60 * 5, // Store number for 5min since first fail
+  blockDuration: 60 * 15, // Block for 15 minutes
+};
+
+const ready = (err) => {
+  if (err) {
+   	console.log(err); 
+  } else {
+    console.log('Limiter login runing...');
+  }
+};
+
+const rateLimiter = new RateLimiterMySQL(opts, ready);
 
 const SALT_KEY = LOGGED_IN_KEY + LOGGED_IN_SALT;
 const ADMIN_SALT_KEY = AUTH_KEY + AUTH_SALT;
@@ -161,138 +183,189 @@ app.get('/', function(req, res) {
   res.sendFile(path.join(__dirname + '/login.html'));
 });
 
+async function loginRoute(req, res) {
 
-app.post('/auth', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
-  if (username && password) {
-    connection.query('SELECT * FROM '+table_prefix+'users WHERE user_login = ?', [username], function(error, results, fields) {
-      if (results.length > 0) {
-        var pass_estored = results[0].user_pass;
-        //console.log('pw:'+ pass_estored);
-        if( hasher.CheckPassword(password, pass_estored) ){
+  var statusBlockUser = await  rateLimiter.get(username);
+  console.log(statusBlockUser);
 
-          const start = parseInt(Date.now()/1000);
-
-          var userID = results[0].ID;
-          var userLogin = results[0].user_login;
-          var pass_frag = pass_estored.substr( 8, 4 );
-          var expiration = start+(12 * 3600);
-
-          var auth_cookie_name = 'wordpress_'+COOKIEHASH;
-            var scheme;
-            var secret_aut = ADMIN_SALT_KEY;
-            if ( IS_SSL ) {
-                auth_cookie_name = 'wordpress_sec_'+COOKIEHASH;
-                scheme           = 'secure_auth';
-                secret_aut = ADMIN_SEC_KEY;
-              } else {
-                auth_cookie_name = 'wordpress_'+COOKIEHASH;
-                scheme           = 'auth';
-                secret_aut = ADMIN_SALT_KEY;
-            }
-
-          var token = get_token(43);
-
-          var hash_token = crypto.createHash('sha256').update(token).digest('hex');
-
-
-          var key = wp_hash_log( userLogin + '|' + pass_frag + '|' + expiration + '|' + token );
-          var hash = hash_hmac( userLogin + '|' + expiration + '|' + token, key );
-          var cookie = userLogin + '|' + expiration + '|' + token + '|' + hash;
-
-          var key_auth = wp_hash_sec( userLogin + '|' + pass_frag + '|' + expiration + '|' +  token, secret_aut);
-          var hash_auth = hash_hmac( userLogin + '|' + expiration + '|' + token, key_auth );
-          var cookie_auth = userLogin + '|' + expiration + '|' + token + '|' + hash_auth;
-    
-          
-          const UA = req.get('User-Agent');
-          const ip = req.header('x-forwarded-for') || req.connection.remoteAddress;
-          var SESSION_TOKEN = {};
-
-          console.log('Token: '+token);
-          console.log('hash_token: '+hash_token);
-          SESSION_TOKEN[hash_token] = 
-            {
-              "expiration": expiration,
-              "ip": ip,
-              "ua": UA,
-              "login": start
-          };
-
-          var serializeSesionToken = phpjs.serialize(SESSION_TOKEN).replace(/(\'|\\)/g, '\\$1');
-
-
-          connection.query('SELECT * FROM '+table_prefix+'usermeta  WHERE meta_key = ? AND user_id = ?', ['session_tokens', userID], function(error, results, fields) {
-              if (results.length > 0) {
-
-                  connection.query('UPDATE '+table_prefix+'usermeta SET meta_value = ? WHERE meta_key = ? AND user_id = ?', [serializeSesionToken, 'session_tokens', userID], (error, results, fields) => {
-              
-                      if (error){
-                        return console.error(error.message);
-                      }
-                      console.log('Rows Update:', results.affectedRows);
-                  });
-
-              }else{
-
-                connection.query('INSERT INTO '+table_prefix+'usermeta ( user_id, meta_key, meta_value ) VALUES  ( ?, ?, ? )', [ userID, 'session_tokens', serializeSesionToken ], (error, results, fields) => {
-              
-                      if (error){
-                        return console.error(error.message);
-                      }
-                      console.log('Rows Insert:', results.affectedRows);
-                  });
-
-              }
-          });
-
-
-            //cookie = 'admin' + '|' + 1613861286 + '|' + '3zxSwjwgaprVlhTvF61fQQ9dad9Lic8Bmi56Av7ui2T' + '|' + 'b3d9279994d15e0bcf76add709fe5a948f388cb6c96661e61586800c4781c718';
-            res.cookie(LOGGED_IN_COOKIE, cookie, { expire: expiration, path: COOKIEPATH });
-
-            // Not work -- wp-admin cookie
-            res.cookie(auth_cookie_name, cookie_auth, { expire: expiration, path: PLUGINS_COOKIE_PATH });
-            res.cookie(auth_cookie_name, cookie_auth, { expire: expiration, path: ADMIN_COOKIE_PATH });
-            // end wp-admin cookie
-
-            res.cookie('wordpress_test_cookie', 'WP+Cookie+check', { path: COOKIEPATH });
-            res.cookie('wp-settings-time-'+userID, start, { path: COOKIEPATH });
-
-            //setcookie( LOGGED_IN_COOKIE, cookie, expiration, COOKIEPATH, COOKIE_DOMAIN, secure_logged_in_cookie, true );
-            //setcookie( $auth_cookie_name, $auth_cookie, $expire, PLUGINS_COOKIE_PATH, COOKIE_DOMAIN, $secure, true );
-            //setcookie( $auth_cookie_name, $auth_cookie, $expire, ADMIN_COOKIE_PATH, COOKIE_DOMAIN, $secure, true );
-            if ( COOKIEPATH != SITECOOKIEPATH ) {
-              res.cookie(LOGGED_IN_COOKIE, cookie, { expire: expiration, path: SITECOOKIEPATH });
-              //setcookie( LOGGED_IN_COOKIE, cookie, expiration, SITECOOKIEPATH, COOKIE_DOMAIN, secure_logged_in_cookie, true );
-            }
-            console.log('Run...');
-            // console.log('');
-            // console.log('key: '+key);
-            // console.log('Token: '+token);
-            // console.log('hash_hmac: '+hash);
-            // console.log('cookie: '+cookie);
-            
-            //console.log(serializeSesionToken);
-            //res.send('Login true!: '+userID);
-            res.redirect(home);
-
-        }else{
-          //res.send('Incorrect Credentials!');
-          res.redirect(PATH_APP+'?fail=1');
-        }
-      } else {
-        res.redirect(PATH_APP+'?fail=2');
-      }     
-      res.end();
-    });
-  } else {
-    // res.send('Please enter Username and Password!');
-    // res.end();
-    res.redirect(PATH_APP+'?fail=2');
+  var activeBlokUser = true;
+  if(statusBlockUser !== null && statusBlockUser.consumedPoints > maxConsecutiveFailsByUsername){
+  		activeBlokUser = false;
   }
+  console.log('status user: '+ activeBlokUser);
+
+  if ( activeBlokUser ) {
+	  if (username && password) {
+	    connection.query('SELECT * FROM '+table_prefix+'users WHERE user_login = ?', [username], function(error, results, fields) {
+	      if (results.length > 0) {
+	        var pass_estored = results[0].user_pass;
+	        //console.log('pw:'+ pass_estored);
+	        if( hasher.CheckPassword(password, pass_estored) ){
+
+	          const start = parseInt(Date.now()/1000);
+
+	          var userID = results[0].ID;
+	          var userLogin = results[0].user_login;
+	          var pass_frag = pass_estored.substr( 8, 4 );
+	          var expiration = start+(12 * 3600);
+
+	          var auth_cookie_name = 'wordpress_'+COOKIEHASH;
+	            var scheme;
+	            var secret_aut = ADMIN_SALT_KEY;
+	            if ( IS_SSL ) {
+	                auth_cookie_name = 'wordpress_sec_'+COOKIEHASH;
+	                scheme           = 'secure_auth';
+	                secret_aut = ADMIN_SEC_KEY;
+	              } else {
+	                auth_cookie_name = 'wordpress_'+COOKIEHASH;
+	                scheme           = 'auth';
+	                secret_aut = ADMIN_SALT_KEY;
+	            }
+
+	          var token = get_token(43);
+
+	          var hash_token = crypto.createHash('sha256').update(token).digest('hex');
 
 
+	          var key = wp_hash_log( userLogin + '|' + pass_frag + '|' + expiration + '|' + token );
+	          var hash = hash_hmac( userLogin + '|' + expiration + '|' + token, key );
+	          var cookie = userLogin + '|' + expiration + '|' + token + '|' + hash;
+
+	          var key_auth = wp_hash_sec( userLogin + '|' + pass_frag + '|' + expiration + '|' +  token, secret_aut);
+	          var hash_auth = hash_hmac( userLogin + '|' + expiration + '|' + token, key_auth );
+	          var cookie_auth = userLogin + '|' + expiration + '|' + token + '|' + hash_auth;
+	    
+	          
+	          const UA = req.get('User-Agent');
+	          const ip = req.header('x-forwarded-for') || req.connection.remoteAddress;
+	          var SESSION_TOKEN = {};
+
+	          console.log('Token: '+token);
+	          console.log('hash_token: '+hash_token);
+	          SESSION_TOKEN[hash_token] = 
+	            {
+	              "expiration": expiration,
+	              "ip": ip,
+	              "ua": UA,
+	              "login": start
+	          };
+
+	          var serializeSesionToken = phpjs.serialize(SESSION_TOKEN).replace(/(\'|\\)/g, '\\$1');
+
+
+	          connection.query('SELECT * FROM '+table_prefix+'usermeta  WHERE meta_key = ? AND user_id = ?', ['session_tokens', userID], function(error, results, fields) {
+	              if (results.length > 0) {
+
+	                  connection.query('UPDATE '+table_prefix+'usermeta SET meta_value = ? WHERE meta_key = ? AND user_id = ?', [serializeSesionToken, 'session_tokens', userID], (error, results, fields) => {
+	              
+	                      if (error){
+	                        return console.error(error.message);
+	                      }
+	                      console.log('Rows Update:', results.affectedRows);
+	                  });
+
+	              }else{
+
+	                connection.query('INSERT INTO '+table_prefix+'usermeta ( user_id, meta_key, meta_value ) VALUES  ( ?, ?, ? )', [ userID, 'session_tokens', serializeSesionToken ], (error, results, fields) => {
+	              
+	                      if (error){
+	                        return console.error(error.message);
+	                      }
+	                      console.log('Rows Insert:', results.affectedRows);
+	                  });
+
+	              }
+	          });
+
+
+	            //cookie = 'admin' + '|' + 1613861286 + '|' + '3zxSwjwgaprVlhTvF61fQQ9dad9Lic8Bmi56Av7ui2T' + '|' + 'b3d9279994d15e0bcf76add709fe5a948f388cb6c96661e61586800c4781c718';
+	            res.cookie(LOGGED_IN_COOKIE, cookie, { expire: expiration, path: COOKIEPATH });
+
+	            // Not work -- wp-admin cookie
+	            res.cookie(auth_cookie_name, cookie_auth, { expire: expiration, path: PLUGINS_COOKIE_PATH });
+	            res.cookie(auth_cookie_name, cookie_auth, { expire: expiration, path: ADMIN_COOKIE_PATH });
+	            // end wp-admin cookie
+
+	            res.cookie('wordpress_test_cookie', 'WP+Cookie+check', { path: COOKIEPATH });
+	            res.cookie('wp-settings-time-'+userID, start, { path: COOKIEPATH });
+
+	            //setcookie( LOGGED_IN_COOKIE, cookie, expiration, COOKIEPATH, COOKIE_DOMAIN, secure_logged_in_cookie, true );
+	            //setcookie( $auth_cookie_name, $auth_cookie, $expire, PLUGINS_COOKIE_PATH, COOKIE_DOMAIN, $secure, true );
+	            //setcookie( $auth_cookie_name, $auth_cookie, $expire, ADMIN_COOKIE_PATH, COOKIE_DOMAIN, $secure, true );
+	            if ( COOKIEPATH != SITECOOKIEPATH ) {
+	              res.cookie(LOGGED_IN_COOKIE, cookie, { expire: expiration, path: SITECOOKIEPATH });
+	              //setcookie( LOGGED_IN_COOKIE, cookie, expiration, SITECOOKIEPATH, COOKIE_DOMAIN, secure_logged_in_cookie, true );
+	            }
+	            console.log('Run...');
+	            // console.log('');
+	            // console.log('key: '+key);
+	            // console.log('Token: '+token);
+	            // console.log('hash_hmac: '+hash);
+	            // console.log('cookie: '+cookie);
+	            
+	            //console.log(serializeSesionToken);
+	            //res.send('Login true!: '+userID);
+
+	            rateLimiter.delete(username).then((rateLimiterRes) => {
+				    console.log('Exist user limit_table: '+rateLimiterRes);
+				  })
+				  .catch((rej) => {
+				    console.log('Error Delete');
+				    console.log(rej);
+				});
+
+	            res.redirect(home);
+
+	        }else{
+	          //res.send('Incorrect Credentials!');
+	            rateLimiter.consume(username)
+				  .then((rateLimiterRes) => {
+				    console.log('Failed attempts: '+rateLimiterRes.consumedPoints);
+				  })
+				  .catch((rej) => {
+				    console.log('Error consume points:');
+				    console.log(rej);
+					});
+
+	          res.redirect(PATH_APP+'?fail=1');
+	        }
+	      } else {
+
+	      	rateLimiter.consume(username)
+				  .then((rateLimiterRes) => {
+				    console.log('Failed attempts: '+rateLimiterRes.consumedPoints);
+				  })
+				  .catch((rej) => {
+				    console.log('Error consume points:');
+				    console.log(rej);
+				});
+
+	        res.redirect(PATH_APP+'?fail=2');
+	      }     
+	      res.end();
+	    });
+	  } else {
+	    // res.send('Please enter Username and Password!');
+	    // res.end();
+	    res.redirect(PATH_APP+'?fail=2');
+	  }
+	}else{
+		res.redirect(PATH_APP+'?fail=3');
+	}
+
+}
+
+app.post('/auth', async function(req, res) {
+
+  try {
+		await loginRoute(req, res);
+  }catch (err) {
+  	console.log(err);
+    res.status(500).end();
+  }
+  
 });
 
 

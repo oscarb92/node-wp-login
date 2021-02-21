@@ -6,6 +6,7 @@
     "express": "^4.17.1",
     "md5": "^2.3.0",
     "mysql": "^2.18.1",
+    "rate-limiter-flexible": "^2.2.1",
     "wordpress-auth": "^0.0.1",
     "wordpress-hash-node": "^1.0.0",
     "wp-auth": "^1.0.2"
