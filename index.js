@@ -29,19 +29,22 @@ const NONCE_KEY = 'w j{K+t0D;hx6qbSpePE7j: g5lzc6*%1.c90;hZ9EItaa>FD5>RWG,#8$eS{
 const LOGGED_IN_SALT = 'm8G: j6OTS;Sdi4r^w?_kOCZqC8MwjI]K#TxUSy>X:Xe|?r%x-D&0j&1e{jjA|!m';
 const NONCE_SALT = 'eyZ}eZ`1yEh].(B*q+8[K6@3T9D>x(-QBL%S,]}iQt&xXl?K[mo}6Q[EC|M%jLb#';
 
+const DB_NAME = 'node_test';
+const table_prefix = 'wp_';
+
 const connection = mysql.createConnection({
   host     : 'localhost',
   user     : 'root',
   password : '',
-  database : 'node_test',
+  database : DB_NAME,
 });
 
 const maxConsecutiveFailsByUsername = 5; //Limit login fails
 
 const opts = {
   storeClient: connection,
-  dbName: 'node_test',
-  tableName: 'node_app_limiter_login', // all limiters store data in one table
+  dbName: DB_NAME,
+  tableName: table_prefix+'node_app_limiter_login', // all limiters store data in one table
   points: maxConsecutiveFailsByUsername, // Number of points
   duration: 60 * 5, // Store number for 5min since first fail
   blockDuration: 60 * 15, // Block for 15 minutes
@@ -68,7 +71,6 @@ var ADMIN_COOKIE_PATH = '';
 var COOKIEPATH = '';
 var SITECOOKIEPATH = '';
 var COOKIEHASH = '';
-const table_prefix = 'wp_';
 
 var IS_SSL = false;
 var secure_logged_in_cookie = false;

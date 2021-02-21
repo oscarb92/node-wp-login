@@ -38,10 +38,30 @@ Add the secret keys found in <code>wp-config.php</code>
 Configure the database, this can be found in <code>wp-config.php</code>
 
 <pre>
+	const DB_NAME = 'node_test';
+	const table_prefix = 'wp_';
+
 	const connection = mysql.createConnection({
 	  host     : 'localhost',
 	  user     : 'root',
 	  password : '',
-	  database : 'node_test',
+	  database : DB_NAME,
 	});
+</pre>
+
+#### LOGIN LIMITER
+counts and limits number of actions by key and protects from DDoS and brute force attacks at any scale.
+* Counter of failed attempts <code>maxConsecutiveFailsByUsername</code>
+<pre>
+
+	const maxConsecutiveFailsByUsername = 5; //Limit login fails
+
+	const opts = {
+	  storeClient: connection,
+	  dbName: DB_NAME,
+	  tableName: table_prefix+'node_app_limiter_login', // all limiters store data in one table
+	  points: maxConsecutiveFailsByUsername, // Number of points
+	  duration: 60 * 5, // Store number for 5min since first fail
+	  blockDuration: 60 * 15, // Block for 15 minutes
+	};
 </pre>
