@@ -4,6 +4,16 @@ The application must be running on the same WordPress domain.
 
 ### CONFIG
 
+File: <code>index.js</code>
+
+### PORT
+Define PORT
+<pre>
+	app.listen(8000, () => {
+	  console.log('listening on port 8000');
+	});
+</pre>
+
 #### PATH
 
 Replace with the path where the app is running, if you are running it in the root, do not modify it.
