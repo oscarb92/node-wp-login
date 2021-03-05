@@ -360,51 +360,6 @@ async function loginRoute(req, res) {
 }
 
 
-app.get('/logout', function(req, res) {
-
-	var auth_cookie_name = 'wordpress_'+COOKIEHASH;
-	var scheme;
-	var secret_aut = ADMIN_SALT_KEY;
-	if ( IS_SSL ) {
-		auth_cookie_name = 'wordpress_sec_'+COOKIEHASH;
-		scheme           = 'secure_auth';
-		secret_aut = ADMIN_SEC_KEY;
-	} else {
-		auth_cookie_name = 'wordpress_'+COOKIEHASH;
-		scheme           = 'auth';
-		secret_aut = ADMIN_SALT_KEY;
-	}
-  	res.clearCookie('foo');
-
-  	res.clearCookie(LOGGED_IN_COOKIE);
-
-  	res.clearCookie(auth_cookie_name);
-  	res.clearCookie(auth_cookie_name);
-  	// res.clearCookie('wp-settings-'+userID);
-  	// res.clearCookie('wp-settings-time-'+userID);
-
-
-  	if ( COOKIEPATH != SITECOOKIEPATH ) {
-  		res.clearCookie(LOGGED_IN_COOKIE);
-  	}
-
-  	res.send('Logout');
-  	//res.redirect(home);
-  
-});
-
-app.post('/auth', async function(req, res) {
-
-  try {
-		await loginRoute(req, res);
-  }catch (err) {
-  	console.log(err);
-    res.status(500).end();
-  }
-  
-});
-
-
 
 
 // Crypto
