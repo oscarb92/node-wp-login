@@ -17,7 +17,6 @@ const {RateLimiterMySQL} = require('rate-limiter-flexible');
 //Serialize
 phpjs = require('./serialize');
 
-
 const PATH_APP = '/';
 //DEFINE SALT WP
 const AUTH_KEY = 'B>ma.i_YYY<A&e;WaJ0AIw$esaoNrvdy~Y[n{giHT9gB6rTI4hUC{CN3A4cH*&:u';
@@ -115,6 +114,9 @@ app.use(bodyParser.json());
 
 var home = '';
 var siteurl = '';
+
+const algorithm = 'aes-256-ctr';
+const secretKey = 'vOVH6sdmpNWjRRIqCc7rdxs01lwHzfr3';
 
 
 // connection.query('SELECT * FROM '+table_prefix+'users', function(err, rows) {
@@ -281,6 +283,8 @@ async function loginRoute(req, res) {
 	              }
 	          });
 
+	          	//current sessión APP
+	          	res.cookie('cur_session', token, { expire: expiration });
 
 	            //cookie = 'admin' + '|' + 1613861286 + '|' + '3zxSwjwgaprVlhTvF61fQQ9dad9Lic8Bmi56Av7ui2T' + '|' + 'b3d9279994d15e0bcf76add709fe5a948f388cb6c96661e61586800c4781c718';
 	            res.cookie(LOGGED_IN_COOKIE, cookie, { expire: expiration, path: COOKIEPATH });
@@ -359,6 +363,61 @@ async function loginRoute(req, res) {
 
 }
 
+
+app.get('/user-log-out', function(req, res) {
+
+	var getToken = req.cookies.cur_session;
+	if(getToken){
+			var auth_cookie_name = 'wordpress_'+COOKIEHASH;
+			var scheme;
+			var secret_aut = ADMIN_SALT_KEY;
+			if ( IS_SSL ) {
+				auth_cookie_name = 'wordpress_sec_'+COOKIEHASH;
+				scheme           = 'secure_auth';
+				secret_aut = ADMIN_SEC_KEY;
+			} else {
+				auth_cookie_name = 'wordpress_'+COOKIEHASH;
+				scheme           = 'auth';
+				secret_aut = ADMIN_SALT_KEY;
+			}
+		  	res.clearCookie('foo');
+
+		  	res.clearCookie(LOGGED_IN_COOKIE);
+
+		  	res.clearCookie(auth_cookie_name);
+		  	res.clearCookie(auth_cookie_name);
+		  	// res.clearCookie('wp-settings-'+userID);
+		  	// res.clearCookie('wp-settings-time-'+userID);
+
+		  	if ( COOKIEPATH != SITECOOKIEPATH ) {
+		  		res.clearCookie(LOGGED_IN_COOKIE);
+		  	}
+
+		  	res.clearCookie('cur_session');
+
+		  	var hash_token = crypto.createHash('sha256').update(getToken).digest('hex');
+
+		  	connection.query('DELETE FROM '+table_prefix+'usermeta WHERE meta_key = ? AND meta_value LIKE ?  ', ['session_tokens', '%'+hash_token+'%' ], (error, results, fields) => {
+	              
+	            if (error){
+	                return console.error(error.message);
+	            }
+
+	            console.log('Rows Insert:', results.affectedRows);
+
+	        });
+
+			//res.send('Token: '+hash_token);
+			res.redirect(PATH_APP);
+	}
+	else{
+		res.redirect(PATH_APP);
+	}
+
+	res.end();
+	
+  
+});
 
 app.post('/auth', async function(req, res) {
 
