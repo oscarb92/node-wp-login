@@ -360,6 +360,18 @@ async function loginRoute(req, res) {
 }
 
 
+app.post('/auth', async function(req, res) {
+
+  try {
+		await loginRoute(req, res);
+  }catch (err) {
+  	console.log(err);
+    res.status(500).end();
+  }
+  
+});
+
+
 
 
 // Crypto
