@@ -29,6 +29,21 @@ Example 2: <code>http://localhost/login:8000</code> or <code>http://localhost/lo
 	const PATH_APP = '/login/';
 </pre>
 
+#### LOGOUT
+
+URL <code>DOMAIN + PATH_APP + /user-log-out</code>
+When accessing this URL the token will be destroyed and the session will be closed
+
+Example 1: <code>http://localhost:8000/user-log-out</code> or <code>http://localhost/user-log-out</code>
+<pre>
+	const PATH_APP = '/';
+</pre>
+
+Example 2: <code>http://localhost/login:8000/user-log-out</code> or <code>http://localhost/login/user-log-out</code>
+<pre>
+	const PATH_APP = '/login/';
+</pre>
+
 #### SECRET KEYS
 Add the secret keys found in <code>wp-config.php</code>
 <pre>
