@@ -1,6 +1,6 @@
 ### DESCRIPTION
 This app is powered by Node JS and allows you to login via JS to a WordPress site.
-This application connects to the database to do the verification and create the login Cookies.
+The application connects to the database to do the verification and create the login Cookies.
 
 ### IMPORTANT: 
 
